@@ -3,17 +3,30 @@
 - Agnesfia Anggraeni (5025201059)
 
 ## SOAL MODUL 5
-(isi yaa ran)
+Tugas pertama kalian yaitu membuat topologi jaringan sesuai dengan rancangan yang diberikan Loid dibawah ini:
 
 ## A. TOPOLOGI JARINGAN
-[kasih ss yg udah ada lingkaran subnet]
+![VLSM-5-Subnet](https://user-images.githubusercontent.com/94664966/205910144-a64507df-0566-41d6-b09e-5e9262436a26.png)
+
 <br>
+Keterangan :	<br>
+- Eden adalah DNS Server<br>
+- WISE adalah DHCP Server<br>
+- Garden dan SSS adalah Web Server<br>
+- Jumlah Host pada Forger adalah 62 host<br>
+- Jumlah Host pada Desmond adalah 700 host<br>
+- Jumlah Host pada Blackbell adalah 255 host<br>
+- Jumlah Host pada Briar adalah 200 host<br>
+
 ### Tree pembagian IP menggunakan VLSM
-[GAMBAR TREE]
+![VLSM-5-IP](https://user-images.githubusercontent.com/94664966/205911325-779c5c8c-8934-4ad6-8dd7-7ba8153d528c.png)
 <br>
 
 ### Tabel Pembagian IP
-[SS spreadsheet tabel pembagian IP & NID]
+![image](https://user-images.githubusercontent.com/94664966/205911587-301b04e2-3f01-46a7-a1db-459a1d2adbb0.png)
+
+![image](https://user-images.githubusercontent.com/94664966/205911729-ffc0483b-d647-4443-89d2-431de6c913c0.png)
+
 
 ### Konfigurasi Node
 
