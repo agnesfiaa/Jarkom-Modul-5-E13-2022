@@ -18,7 +18,7 @@ Keterangan :	<br>
 - Jumlah Host pada Blackbell adalah 255 host<br>
 - Jumlah Host pada Briar adalah 200 host<br>
 
-### Tree pembagian IP menggunakan VLSM
+### B. Tree pembagian IP menggunakan VLSM
 ![VLSM-5-IP](https://user-images.githubusercontent.com/94664966/205911325-779c5c8c-8934-4ad6-8dd7-7ba8153d528c.png)
 <br>
 
@@ -30,7 +30,7 @@ Keterangan :	<br>
 
 ### Konfigurasi Node
 
-### Routing
+### C. Routing
 #### STRIX
 ```
 route add -net 10.28.0.0 netmask 255.255.252.0 gw 10.28.7.146 #Desmond A2
