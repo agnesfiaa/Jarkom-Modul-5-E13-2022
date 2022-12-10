@@ -19,10 +19,16 @@ Keterangan :	<br>
 - Jumlah Host pada Briar adalah 200 host<br>
 
 ### B. Tree pembagian IP menggunakan VLSM
+Setelah mendapatkan jumlah IP pada setiap subnet, akan dibuat Tree berdasarkan topologi. Pada subnet induk memiliki NID 10.28.0.0 dengan netmask /21 sehingga pembagian IP dilakukan berdasarkan NID dan Netmask yang di dapat hingga mencapai subnet terbawah.
+
 ![VLSM-5-IP](https://user-images.githubusercontent.com/94664966/205911325-779c5c8c-8934-4ad6-8dd7-7ba8153d528c.png)
 <br>
 
+Lalu, kita akan mendapatkan IP untuk masing-masing subnet.
+
 ### Tabel Pembagian IP
+Kemudian kita bagi dengan tetap menggunakan ip prefix  `10.28`. Hasil pembagian seperti berikut :
+
 ![image](https://user-images.githubusercontent.com/94664966/205911587-301b04e2-3f01-46a7-a1db-459a1d2adbb0.png)
 
 ![image](https://user-images.githubusercontent.com/94664966/205911729-ffc0483b-d647-4443-89d2-431de6c913c0.png)
@@ -150,6 +156,7 @@ iface eth0 inet dhcp
 ```
 
 ### C. Routing
+Kemudian, akan dilakukan routing pada GNS3 agar semua router, server, dan client agar saling terhubung.
 #### STRIX
 ```
 route add -net 10.28.0.0 netmask 255.255.252.0 gw 10.28.7.146 #Desmond A2
@@ -337,14 +344,16 @@ Listen 443
 
 1. Agar topologi yang kalian buat dapat mengakses keluar, kalian diminta untuk mengkonfigurasi Strix menggunakan iptables, tetapi Loid tidak ingin menggunakan MASQUERADE.
 
-Pertama, dapatkan terlebih dahulu IP dari Strix yang terhubung dengan NAT dengan menggunakan command ```ip a ```
+Pertama, dapatkan terlebih dahulu IP dari Strix yang terhubung dengan NAT dengan menggunakan command `ip a `
+
 ![image](https://user-images.githubusercontent.com/94664966/206847269-9a37745f-c63d-4d13-b6bd-ffe763a455f3.png)
 
-Karena diminta menggunakan ```MASQUERADE```, maka digunakan ```SNAT```. Source akan diubah dari yang awalnya ```0.0``` ke Strix dengan ```to-source 192.168.122.213``` 
+Karena diminta menggunakan `MASQUERADE`, maka digunakan `SNAT`. Source akan diubah dari yang awalnya `0.0` ke Strix dengan `to-source 192.168.122.213`
 ```
 iptables -t nat -A POSTROUTING -s 10.28.0.0/21 -o eth0 -j SNAT --to-source 192.168.122.213
 ```
 Hasil Testing
+
 ![image](https://user-images.githubusercontent.com/94664966/206849125-3da20d49-9cb6-4113-b11f-ebd0bcb4a255.png)
 
 2. Kalian diminta untuk melakukan drop semua TCP dan UDP dari luar Topologi kalian pada server yang merupakan DHCP Server demi menjaga keamanan.
@@ -357,7 +366,9 @@ iptables -A FORWARD -d 10.28.7.128/29 -i eth0 -p tcp --dport 80 -j DROP
 iptables -A FORWARD -d 10.28.7.128/29 -i eth0 -p tcp --dport 80 -j DROP
 ```
 Maka semua yang berada pada udp dan tcp akan di drop.
+
 Hasil Testing
+
 ![image](https://user-images.githubusercontent.com/94664966/206849522-38ed18bd-46c7-4872-b969-ee4efba7022b.png)
 
 3. Loid meminta kalian untuk membatasi DHCP dan DNS Server hanya boleh menerima maksimal 2 koneksi ICMP secara bersamaan menggunakan iptables, selebihnya didrop.
@@ -394,6 +405,7 @@ iptables -A INPUT -m time --timestart 07:00 --timestop 16:00 --weekdays Mon,Tue,
 iptables -A INPUT -j REJECT
 ```
 Hasil Testing
+
 ![image](https://user-images.githubusercontent.com/94664966/206855893-6b69002e-62a0-4499-afb7-145afc660fcf.png)
 
 ![image](https://user-images.githubusercontent.com/94664966/206855966-5b819f74-11be-4066-abd9-98e223963848.png)
@@ -409,4 +421,47 @@ iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.28.7.139 -m statistic --m
 iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.28.7.139 -j DNAT --to-destination 10.8.7.138:443
 ```
 Hasil Testing
+
 - Request Ke Garden
+
+![image](https://user-images.githubusercontent.com/94664966/206857476-bee99d82-6aad-48f1-a0c4-75bf2bb369fb.png)
+
+- Request ke SSS
+
+![image](https://user-images.githubusercontent.com/94664966/206857661-eb71bc89-974d-44f6-88ca-30768c6f9162.png)
+ 
+6. Karena Loid ingin tau paket apa saja yang di-drop, maka di setiap node server dan router ditambahkan logging paket yang di-drop dengan standard syslog level.
+
+<strong>Pada Wise</strong> restart terlebih dahulu DHCP nya dengan:
+```
+service isc-dhcp-server restart
+service isc-dhcp-server restart
+```
+Selanjutnya isikan sylog syntax pada WISE untuk melihat paket yang di drop.
+```
+iptables -N LOGGING
+iptables -A INPUT -p icmp -m connlimit --connlimit-above 2 --connlimit-mask 0 -j LOGGING
+iptables -A LOGGING -j LOG --log-prefix "IPTables-Dropped: "
+iptables -A LOGGING -j DROP
+```
+Lalu isikan sylog pada semua node
+```
+service apache2 restart
+service apache2 restart
+
+iptables -A INPUT -m time --timestart 07:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
+
+iptables -N LOGGING
+iptables -A INPUT -j LOGGING
+iptables -A LOGGING -j LOG --log-prefix "IPTables-Rejected: "
+iptables -A LOGGING -j REJECT
+
+service rsyslog restart
+```
+Setelah selesai semua, testing hasilnya dengan ` iptables -L`.
+
+Hasil Testing 
+
+![image](https://user-images.githubusercontent.com/94664966/206858846-4c960934-f511-4f07-97ec-5cf68387187c.png)
+
+
