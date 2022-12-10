@@ -362,8 +362,8 @@ Syntax Iptables yang dapat digunakan untuk masalah diatas adalah sebagai berikut
 Iptables ditempatkan pada WISE yang merupakan DHCP Server.
 
 ```
-iptables -A FORWARD -d 10.28.7.128/29 -i eth0 -p tcp --dport 80 -j DROP
-iptables -A FORWARD -d 10.28.7.128/29 -i eth0 -p tcp --dport 80 -j DROP
+iptables -A FORWARD -d 10.28.7.128/29 -i eth0 -p tcp  -j DROP
+iptables -A FORWARD -d 10.28.7.128/29 -i eth0 -p udp  -j DROP
 ```
 Maka semua yang berada pada udp dan tcp akan di drop.
 
@@ -415,10 +415,10 @@ Hasil Testing
 
 Karena diminta untuk setiap request akan didistribusikan secara bergantian antara Garden dan SSS, maka akan dikonfigurasi untuk masing-masing node dengan port untuk request masing-masing node adalah 80 dan 443 dengan menggunakan `--dport`. Selain itu, akan dibatasi secara bergantian dengan menggunakan `--every 2` sehingga akan bergantian terdistribusinya dengan mengarahkan ke node lain dengan menggunakan `--to-destination`.
 ```
-iptables -A PREROUTING -t nat -p tcp --dport 80 -d 10.28.7.138 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 10.8.7.138:80
+iptables -A PREROUTING -t nat -p tcp --dport 80 -d 10.28.7.138 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 10.28.7.138:80
 iptables -A PREROUTING -t nat -p tcp --dport 80 -d 10.28.7.138 -j DNAT --to-destination 10.28.7.139:80
-iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.28.7.139 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 10.8.7.139:443
-iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.28.7.139 -j DNAT --to-destination 10.8.7.138:443
+iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.28.7.139 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 10.28.7.139:443
+iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.28.7.139 -j DNAT --to-destination 10.28.7.138:443
 ```
 Hasil Testing
 
