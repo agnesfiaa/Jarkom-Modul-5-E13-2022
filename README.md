@@ -333,30 +333,80 @@ Listen 443
 # vim: syntax=apache ts=4 sw=4 sts=4 sr noet
 ```
 
+#### Penyelesaian
+
 1. Agar topologi yang kalian buat dapat mengakses keluar, kalian diminta untuk mengkonfigurasi Strix menggunakan iptables, tetapi Loid tidak ingin menggunakan MASQUERADE.
+
+Pertama, dapatkan terlebih dahulu IP dari Strix yang terhubung dengan NAT dengan menggunakan command ```ip a ```
+![image](https://user-images.githubusercontent.com/94664966/206847269-9a37745f-c63d-4d13-b6bd-ffe763a455f3.png)
+
+Karena diminta menggunakan ```MASQUERADE```, maka digunakan ```SNAT```. Source akan diubah dari yang awalnya ```0.0``` ke Strix dengan ```to-source 192.168.122.213``` 
 ```
-IPETH0="$(ip -br a | grep eth0 | awk '{print $NF}' | cut -d'/' -f1)"
-iptables -t nat -A POSTROUTING -o eth0 -j SNAT --to-source "$IPETH0" -s 10.28.0.0/21
+iptables -t nat -A POSTROUTING -s 10.28.0.0/21 -o eth0 -j SNAT --to-source 192.168.122.213
 ```
+Hasil Testing
+![image](https://user-images.githubusercontent.com/94664966/206849125-3da20d49-9cb6-4113-b11f-ebd0bcb4a255.png)
+
 2. Kalian diminta untuk melakukan drop semua TCP dan UDP dari luar Topologi kalian pada server yang merupakan DHCP Server demi menjaga keamanan.
+
+Syntax Iptables yang dapat digunakan untuk masalah diatas adalah sebagai berikut.
+Iptables ditempatkan pada WISE yang merupakan DHCP Server.
+
 ```
-iptables -A FORWARD -d 10.28.7.131 -i eth0 -p tcp --dport 80 -j DROP
-iptables -A FORWARD -d 10.28.7.130 -i eth0 -p tcp --dport 80 -j DROP
+iptables -A FORWARD -d 10.28.7.128/29 -i eth0 -p tcp --dport 80 -j DROP
+iptables -A FORWARD -d 10.28.7.128/29 -i eth0 -p tcp --dport 80 -j DROP
 ```
+Maka semua yang berada pada udp dan tcp akan di drop.
+Hasil Testing
+![image](https://user-images.githubusercontent.com/94664966/206849522-38ed18bd-46c7-4872-b969-ee4efba7022b.png)
+
 3. Loid meminta kalian untuk membatasi DHCP dan DNS Server hanya boleh menerima maksimal 2 koneksi ICMP secara bersamaan menggunakan iptables, selebihnya didrop.
+
+Karena koneksinya ICMP maka akan digunakan flag `-p` dengan nilai `icmp`. Selain, itu akan digunakan limit maksimal 2 untuk akses koneksi secara bersamaan sehingga dapat menggunakan --`connlimit-above 2` dan menambahkan target `DROP` agar koneksi lainnya selain 2 koneksi tersebut ditolak.
 ```
-iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 --connlimit-mask 0 -j DROP
+iptables -A INPUT -p icmp -m connlimit --connlimit-above 2 --connlimit-mask 0 -j DROP
+
 ```
+Hail Testing
+- DHCP Server
+![image](https://user-images.githubusercontent.com/94664966/206854722-da6638df-de36-4744-83b1-f9723182d53c.png)
+![image](https://user-images.githubusercontent.com/94664966/206855020-0de1b079-cfb3-403f-8f83-1271b538461f.png)
+![image](https://user-images.githubusercontent.com/94664966/206855155-3a693b57-dbcc-4fc3-a049-99007a19aa49.png)
+
+- DNS Server
+![image](https://user-images.githubusercontent.com/94664966/206855218-c1b10267-66cd-40d1-8e93-4b12d044fffa.png)
+![image](https://user-images.githubusercontent.com/94664966/206855390-51460bda-46ea-4a34-aa4f-25f104d31100.png)
+![image](https://user-images.githubusercontent.com/94664966/206855429-37449f7c-9ffb-47a6-9ad1-d663e26955f0.png)
+
+
 4. Akses menuju Web Server hanya diperbolehkan disaat jam kerja yaitu Senin sampai Jumat pada pukul 07.00 - 16.00.
+
+Karena dibatasi waktu tertentu maka kita batasi menggunakan `-m time` dengan `--timestart` sebagai waktu mulai dapat diakses bernilai 07.00 dan `--timestop` sebagai waktu akhir dapat diakses bernilai 16.00, serta membatasi hari berlaku dengan `--weekdays` untuk hari Senin hingga Jumat. Terdapat flag `-j` yang menentukan kapan akses akan di `ACCEPT` atau `REJECT`.
+
+Pada DNS Server (Node Eden)
 ```
-iptables -A INPUT -s 10.28.7.0/25 -m time --weekdays Sat,Sun -j REJECT
-iptables -A INPUT -s 10.28.7.0/25 -m time --timestart 00:00 --timestop 06:59 --weekdays Mon,Tue,Wed,Thu,Fri -j REJECT
-iptables -A INPUT -s 10.28.7.0/25 -m time --timestart 15:01 --timestop 23:59 --weekdays Mon,Tue,Wed,Thu,Fri -j REJECT
+iptables -A INPUT -s 10.28.7.136/29 -m time --timestart 07:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
+iptables -A INPUT -s 10.28.7.136/29 -j REJECT
 ```
+Pada Web Server (Node Garden dan SSS)
 ```
-iptables -A INPUT -s 10.28.0.0/22 -m time --weekdays Sat,Sun -j REJECT
-iptables -A INPUT -s 10.28.0.0/22 -m time --timestart 00:00 --timestop 06:59 --weekdays Mon,Tue,Wed,Thu,Fri -j REJECT
-iptables -A INPUT -s 10.28.0.0/22 -m time --timestart 15:01 --timestop 23:59 --weekdays Mon,Tue,Wed,Thu,Fri -j REJECT
+iptables -A INPUT -m time --timestart 07:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
+iptables -A INPUT -j REJECT
 ```
+Hasil Testing
+![image](https://user-images.githubusercontent.com/94664966/206855893-6b69002e-62a0-4499-afb7-145afc660fcf.png)
+
+![image](https://user-images.githubusercontent.com/94664966/206855966-5b819f74-11be-4066-abd9-98e223963848.png)
+
+
 5. Karena kita memiliki 2 Web Server, Loid ingin Ostania diatur sehingga setiap request dari client yang mengakses Garden dengan port 80 akan didistribusikan secara bergantian pada SSS dan Garden secara berurutan dan request dari client yang mengakses SSS dengan port 443 akan didistribusikan secara bergantian pada Garden dan SSS secara berurutan.
+
+Karena diminta untuk setiap request akan didistribusikan secara bergantian antara Garden dan SSS, maka akan dikonfigurasi untuk masing-masing node dengan port untuk request masing-masing node adalah 80 dan 443 dengan menggunakan `--dport`. Selain itu, akan dibatasi secara bergantian dengan menggunakan `--every 2` sehingga akan bergantian terdistribusinya dengan mengarahkan ke node lain dengan menggunakan `--to-destination`.
 ```
+iptables -A PREROUTING -t nat -p tcp --dport 80 -d 10.28.7.138 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 10.8.7.138:80
+iptables -A PREROUTING -t nat -p tcp --dport 80 -d 10.28.7.138 -j DNAT --to-destination 10.28.7.139:80
+iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.28.7.139 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 10.8.7.139:443
+iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.28.7.139 -j DNAT --to-destination 10.8.7.138:443
+```
+Hasil Testing
+- Request Ke Garden
